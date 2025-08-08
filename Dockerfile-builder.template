@@ -362,7 +362,8 @@ RUN set -eux; \
 	[ -n "$ARCH" ]; \
 	export ARCH; \
 {{ ) end -}}
-	make -j "$nproc" busybox; \
+	make -j "$nproc" busybox_unstripped; \
+	mv -v busybox_unstripped busybox; \
 	./busybox --help; \
 	mkdir -p rootfs/bin; \
 	ln -vL busybox rootfs/bin/; \

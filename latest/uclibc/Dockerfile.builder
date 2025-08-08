@@ -300,7 +300,8 @@ RUN set -eux; \
 # https://git.busybox.net/busybox/tree/Makefile?h=1_37_stable#n145
 	CROSS_COMPILE="$(basename /usr/src/buildroot/output/host/usr/*-buildroot-linux-uclibc*)"; \
 	export CROSS_COMPILE="$CROSS_COMPILE-"; \
-	make -j "$nproc" busybox; \
+	make -j "$nproc" busybox_unstripped; \
+	mv -v busybox_unstripped busybox; \
 	./busybox --help; \
 	mkdir -p rootfs/bin; \
 	ln -vL busybox rootfs/bin/; \

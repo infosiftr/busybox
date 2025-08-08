@@ -137,7 +137,8 @@ RUN set -eux; \
 	esac; \
 	[ -n "$ARCH" ]; \
 	export ARCH; \
-	make -j "$nproc" busybox; \
+	make -j "$nproc" busybox_unstripped; \
+	mv -v busybox_unstripped busybox; \
 	./busybox --help; \
 	mkdir -p rootfs/bin; \
 	ln -vL busybox rootfs/bin/; \
