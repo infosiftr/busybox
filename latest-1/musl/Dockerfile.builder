@@ -12,37 +12,48 @@ RUN set -eux; \
 		coreutils \
 		curl \
 		gcc \
-		gnupg \
 		linux-headers \
 		make \
 		musl-dev \
 		patch \
+		sequoia-sq \
 		tzdata \
 # busybox's tar ironically does not maintain mtime of directories correctly (which we need for SOURCE_DATE_EPOCH / reproducibility)
 		tar \
 	;
 
-# pub   1024D/ACC9965B 2006-12-12
-#       Key fingerprint = C9E9 416F 76E6 10DB D09D  040F 47B7 0C55 ACC9 965B
-# uid                  Denis Vlasenko <vda.linux@googlemail.com>
-# sub   1024g/2C766641 2006-12-12
-RUN mkdir -p ~/.gnupg && gpg --batch --keyserver keyserver.ubuntu.com --recv-keys C9E9416F76E610DBD09D040F47B70C55ACC9965B
+RUN set -eux; \
+# https://lists.busybox.net/pipermail/busybox/2023-February/090157.html
+	sq network search 'C9E9416F76E610DBD09D040F47B70C55ACC9965B'; \
+#
+# Error: No binding signature at time 2025-08-12T23:46:30Z
+# because: Policy rejected non-revocation signature (PositiveCertification) requiring second pre-image resistance
+# because: SHA1 is not considered secure since 2023-02-01T00:00:00Z
+#
+# and then:
+#
+# Error: Policy rejected asymmetric algorithm
+# because: DSA1024 is not considered secure since 2014-02-01T00:00:00Z
+#
+	sq --policy-as-of 2014-01-01T00:00:00Z pki link add --cert 'C9E9416F76E610DBD09D040F47B70C55ACC9965B' --userid 'Denis Vlasenko <vda.linux@googlemail.com>'
 
 # https://busybox.net: 19 May 2023
 ENV BUSYBOX_VERSION 1.36.1
 ENV BUSYBOX_SHA256 b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314
 
 RUN set -eux; \
-	tarball="busybox-${BUSYBOX_VERSION}.tar.bz2"; \
-	curl -fL -o busybox.tar.bz2.sig "https://busybox.net/downloads/$tarball.sig"; \
-	curl -fL -o busybox.tar.bz2 "https://busybox.net/downloads/$tarball"; \
+	sq download \
+		--output busybox.tar.bz2 \
+		--url "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2" \
+		--signature-url "https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2.sig" \
+		--signer 'C9E9416F76E610DBD09D040F47B70C55ACC9965B' \
+	; \
 	echo "$BUSYBOX_SHA256 *busybox.tar.bz2" | sha256sum -c -; \
-	gpg --batch --verify busybox.tar.bz2.sig busybox.tar.bz2; \
 # Alpine... 😅
 	mkdir -p /usr/src; \
 	tar -xf busybox.tar.bz2 -C /usr/src "busybox-$BUSYBOX_VERSION"; \
 	mv "/usr/src/busybox-$BUSYBOX_VERSION" /usr/src/busybox; \
-	rm busybox.tar.bz2*; \
+	rm busybox.tar.bz2; \
 	\
 # save the tarball's filesystem timestamp persistently (in case building busybox modifies it) so we can use it for reproducible rootfs later
 	SOURCE_DATE_EPOCH="$(stat -c '%Y' /usr/src/busybox | tee /usr/src/busybox.SOURCE_DATE_EPOCH)"; \
